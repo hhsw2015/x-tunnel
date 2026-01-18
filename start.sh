@@ -18,7 +18,7 @@ curl -L -f --retry 3 \
   -o cloudflared && chmod +x cloudflared
 
 curl -L -f --retry 3 \
-  https://github.com/hhsw2015/x-tunnel/releases/download/v1.1/x-tunnel-linux-amd64 \
+  https://github.com/hhsw2015/x-tunnel/releases/download/v1.2/x-tunnel-linux-amd64 \
   -o x-tunnel
 
 chmod +x x-tunnel
