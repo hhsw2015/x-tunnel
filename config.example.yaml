@@ -1,0 +1,58 @@
+# x-tunnel 客户端配置文件示例
+# 将此文件复制为 config.yaml 并根据需要修改配置
+
+# SOCKS5 监听地址
+# 格式: socks5://[user:pass@]0.0.0.0:1080
+listen: "socks5://0.0.0.0:1080"
+
+# 服务器地址
+# 格式: wss://host:port/path
+forward: "wss://example.com:443/path"
+
+# 指定连接的IP地址（可选，多个用逗号分隔）
+ip: ""
+
+# 拦截的UDP端口列表（逗号分隔）
+udp_block_ports: "443"
+
+# 身份验证令牌（可选）
+token: ""
+
+# 每个IP的WebSocket连接数
+connection_num: 3
+
+# 忽略证书校验（true/false）
+insecure: false
+
+# 服务端IP解析偏好
+# 可选值: 4 (仅IPv4), 6 (仅IPv6), 4,6 (优先IPv4), 6,4 (优先IPv6)
+ips: ""
+
+# ECH查询DNS服务器
+dns_server: "https://doh.pub/dns-query"
+
+# ECH公钥查询域名
+ech_domain: "cloudflare-ech.com"
+
+# 禁用ECH回落到TLS 1.3（true/false）
+fallback: false
+
+# 以下为高级配置（超时和间隔设置，留空使用默认值）
+
+# 拨号超时（如: 3s）
+dial_timeout: ""
+
+# WebSocket握手超时（如: 5s）
+ws_handshake_timeout: ""
+
+# WebSocket写入超时（如: 5s）
+ws_write_timeout: ""
+
+# WebSocket读取超时（如: 10s）
+ws_read_timeout: ""
+
+# Ping间隔（如: 3s）
+ping_interval: ""
+
+# 重连延迟（如: 1s）
+reconnect_delay: ""

@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"gopkg.in/yaml.v3"
 )
 
 type GlobalConfig struct {
@@ -32,6 +34,27 @@ type GlobalConfig struct {
 	ReconnectDelay     time.Duration
 	ReadBuf32K         int
 	ReadBuf64K         int
+}
+
+// FileConfig 表示配置文件的结构
+type FileConfig struct {
+	ListenAddr       string        `yaml:"listen"`
+	ForwardAddr      string        `yaml:"forward"`
+	IP               string        `yaml:"ip"`
+	UDPBlockPorts    string        `yaml:"udp_block_ports"`
+	Token            string        `yaml:"token"`
+	ConnectionNum    int           `yaml:"connection_num"`
+	Insecure         bool          `yaml:"insecure"`
+	IPs              string        `yaml:"ips"`
+	DNSServer        string        `yaml:"dns_server"`
+	ECHDomain        string        `yaml:"ech_domain"`
+	Fallback         bool          `yaml:"fallback"`
+	DialTimeout      time.Duration `yaml:"dial_timeout"`
+	WSHandTimeout    time.Duration `yaml:"ws_handshake_timeout"`
+	WSWriteTimeout   time.Duration `yaml:"ws_write_timeout"`
+	WSReadTimeout    time.Duration `yaml:"ws_read_timeout"`
+	PingInterval     time.Duration `yaml:"ping_interval"`
+	ReconnectDelay   time.Duration `yaml:"reconnect_delay"`
 }
 
 var cfg = GlobalConfig{
@@ -49,6 +72,7 @@ var buf32kPool = sync.Pool{New: func() any { b := make([]byte, 32*1024); return 
 var buf64kPool = sync.Pool{New: func() any { b := make([]byte, 64*1024); return &b }}
 
 var (
+	configFile       string
 	listenAddr       string
 	forwardAddr      string
 	ipAddr           string
@@ -82,6 +106,7 @@ const (
 )
 
 func init() {
+	flag.StringVar(&configFile, "config", "", "配置文件路径 (YAML格式)")
 	flag.StringVar(&listenAddr, "l", "", "SOCKS5监听地址 (格式: socks5://[user:pass@]0.0.0.0:1080)")
 	flag.StringVar(&forwardAddr, "f", "", "服务地址 (格式: wss://host:port/path)")
 	flag.StringVar(&ipAddr, "ip", "", "指定连接的IP地址（多个用逗号分隔）")
@@ -95,8 +120,109 @@ func init() {
 	flag.StringVar(&ips, "ips", "", "服务端IP解析偏好 (4/6/4,6/6,4)")
 }
 
+// loadConfigFromFile 从配置文件读取配置，并应用到全局变量
+// 参数优先级: 命令行参数 > 配置文件 > 程序默认值
+func loadConfigFromFile(filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("无法读取文件: %w", err)
+	}
+
+	var fileConfig FileConfig
+	if err := yaml.Unmarshal(data, &fileConfig); err != nil {
+		return fmt.Errorf("YAML解析失败: %w", err)
+	}
+
+	// 获取命令行中实际设置的参数
+	commandLineSet := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		commandLineSet[f.Name] = true
+	})
+
+	// 只有当命令行中未设置该参数时，才使用配置文件中的值
+	
+	if !commandLineSet["l"] && fileConfig.ListenAddr != "" {
+		listenAddr = fileConfig.ListenAddr
+	}
+
+	if !commandLineSet["f"] && fileConfig.ForwardAddr != "" {
+		forwardAddr = fileConfig.ForwardAddr
+	}
+
+	if !commandLineSet["ip"] && fileConfig.IP != "" {
+		ipAddr = fileConfig.IP
+	}
+
+	if !commandLineSet["block"] && fileConfig.UDPBlockPorts != "" {
+		udpBlockPortsStr = fileConfig.UDPBlockPorts
+	}
+
+	if !commandLineSet["token"] && fileConfig.Token != "" {
+		token = fileConfig.Token
+	}
+
+	if !commandLineSet["n"] && fileConfig.ConnectionNum != 0 {
+		connectionNum = fileConfig.ConnectionNum
+	}
+
+	if !commandLineSet["insecure"] && fileConfig.Insecure {
+		insecure = fileConfig.Insecure
+	}
+
+	if !commandLineSet["ips"] && fileConfig.IPs != "" {
+		ips = fileConfig.IPs
+	}
+
+	if !commandLineSet["dns"] && fileConfig.DNSServer != "" {
+		dnsServer = fileConfig.DNSServer
+	}
+
+	if !commandLineSet["ech"] && fileConfig.ECHDomain != "" {
+		echDomain = fileConfig.ECHDomain
+	}
+
+	if !commandLineSet["fallback"] && fileConfig.Fallback {
+		fallback = fileConfig.Fallback
+	}
+
+	// 应用全局配置中的超时设置（这些参数没有命令行选项）
+	if fileConfig.DialTimeout > 0 {
+		cfg.DialTimeout = fileConfig.DialTimeout
+	}
+
+	if fileConfig.WSHandTimeout > 0 {
+		cfg.WSHandshakeTimeout = fileConfig.WSHandTimeout
+	}
+
+	if fileConfig.WSWriteTimeout > 0 {
+		cfg.WSWriteTimeout = fileConfig.WSWriteTimeout
+	}
+
+	if fileConfig.WSReadTimeout > 0 {
+		cfg.WSReadTimeout = fileConfig.WSReadTimeout
+	}
+
+	if fileConfig.PingInterval > 0 {
+		cfg.PingInterval = fileConfig.PingInterval
+	}
+
+	if fileConfig.ReconnectDelay > 0 {
+		cfg.ReconnectDelay = fileConfig.ReconnectDelay
+	}
+
+	log.Printf("[客户端] 配置文件加载成功: %s", filePath)
+	return nil
+}
+
 func main() {
 	flag.Parse()
+
+	// 如果指定了配置文件，先从配置文件读取
+	if configFile != "" {
+		if err := loadConfigFromFile(configFile); err != nil {
+			log.Fatalf("[客户端] 读取配置文件失败: %v", err)
+		}
+	}
 
 	if listenAddr == "" || forwardAddr == "" {
 		flag.Usage()
