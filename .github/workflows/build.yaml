@@ -47,6 +47,8 @@ jobs:
           docker pull crazymax/xgo:latest
           go install github.com/crazy-max/xgo@latest
           sudo apt install upx
+          go get gopkg.in/yaml.v3
+          go mod tidy
 
       - name: Build
         run: |
