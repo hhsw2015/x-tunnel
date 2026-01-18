@@ -1,0 +1,67 @@
+name: Release All Platforms
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag（例如 v1.5.0 或 nightly-20251129）'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  # Main release job for all platforms
+  release:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Free Disk Space (Ubuntu)
+        if: matrix.target-platform == ''
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo snap install zig --classic --beta
+          docker pull crazymax/xgo:latest
+          go install github.com/crazy-max/xgo@latest
+          sudo apt install upx
+
+      - name: Build
+        run: |
+          bash build.sh release ${{ matrix.build-type == 'lite' && 'lite' || '' }} ${{ matrix.target-platform }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/compress/*
+          prerelease: false
+          tag_name: ${{ inputs.version }}
+
+
+
+
+
