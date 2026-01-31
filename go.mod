@@ -1,4 +1,4 @@
-module xtunnel
+module x-tunnel
 
 go 1.25.6
 
