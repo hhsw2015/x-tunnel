@@ -1265,6 +1265,25 @@ func (p *echClientPool) signalConnected(id string) {
 	}
 }
 
+func (p *echClientPool) WaitConnected(id string, timeout time.Duration) bool {
+	p.mu.RLock()
+	st := p.conns[id]
+	var ch chan bool
+	if st != nil {
+		ch = st.connected
+	}
+	p.mu.RUnlock()
+	if ch == nil {
+		return false
+	}
+	select {
+	case <-ch:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
 func (p *echClientPool) SendDataDirect(chID int, connID string, b []byte) error {
 	return p.asyncWriteDirect(chID, websocket.BinaryMessage, encodeMessage(MsgTCPData, connID, nil, b))
 }
@@ -1421,7 +1440,7 @@ func runSOCKS5Listener(addr string) {
 func handleSOCKS5(c net.Conn, cfgp *ProxyConfig) {
 	defer c.Close()
 
-	_ = c.SetDeadline(time.Now().Add(3 * time.Second))
+	_ = c.SetDeadline(time.Now().Add(cfg.DialTimeout))
 
 	// VER, NMETHODS
 	buf := make([]byte, 2)
@@ -1689,6 +1708,16 @@ func (a *udpAssociation) send(target string, data []byte) {
 
 	if needStart {
 		a.pool.StartUDPRace(a.connID, target)
+		if !a.pool.WaitConnected(a.connID, cfg.DialTimeout) {
+			a.Close()
+			return
+		}
+		if id, ok := a.pool.getUplinkChannel(a.connID); ok {
+			a.mu.Lock()
+			a.channelID = id
+			chID = id
+			a.mu.Unlock()
+		}
 	}
 
 	if chID < 0 {
