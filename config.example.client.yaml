@@ -1,0 +1,46 @@
+# x-tunnel client config example
+# Copy this file to config.yaml and adjust as needed.
+
+# Listen address (string or array; array preferred)
+listen:
+  - "socks5://0.0.0.0:1080"
+  # - "http://0.0.0.0:8080"
+  # - "tcp://0.0.0.0:2000/1.2.3.4:22"
+
+# Server address (client mode)
+forward: "wss://example.com:443/path"
+
+# Optional: force connect to specific IPs (comma separated)
+ip: ""
+
+# UDP block ports (comma separated)
+udp_block_ports: "443"
+
+# Optional auth token (WebSocket subprotocol)
+token: ""
+
+# WebSocket connections per IP
+connection_num: 3
+
+# Ignore certificate verification (true/false)
+insecure: false
+
+# DNS preference when resolving target (client only): 4 / 6 / 4,6 / 6,4
+ips: ""
+
+# DNS server for ECH lookup (DoH or UDP)
+dns_server: "https://doh.pub/dns-query"
+
+# ECH domain
+ech_domain: "cloudflare-ech.com"
+
+# Disable ECH and fallback to standard TLS 1.3
+fallback: false
+
+# ===== Advanced timeouts (omit to use defaults) =====
+# dial_timeout: "3s"
+# ws_handshake_timeout: "5s"
+# ws_write_timeout: "5s"
+# ws_read_timeout: "10s"
+# ping_interval: "3s"
+# reconnect_delay: "1s"

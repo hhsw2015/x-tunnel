@@ -1,0 +1,29 @@
+# x-tunnel server config example
+# Copy this file to config.yaml and adjust as needed.
+
+# Listen address (string or array; array preferred)
+# Server mode is enabled when listen starts with ws:// or wss://
+listen:
+  - "wss://0.0.0.0:443/path"
+  # - "ws://0.0.0.0:80/path"
+
+# Optional: SOCKS5 upstream proxy (server mode)
+# forward: "socks5://user:pass@127.0.0.1:1080"
+
+# Optional auth token (WebSocket subprotocol)
+token: ""
+
+# TLS certificate and key (optional; auto-generate if empty)
+cert: ""
+key: ""
+
+# Allowed source CIDRs (comma separated)
+cidr: "0.0.0.0/0,::/0"
+
+# ===== Advanced timeouts (omit to use defaults) =====
+# dial_timeout: "3s"
+# ws_handshake_timeout: "5s"
+# ws_write_timeout: "5s"
+# ws_read_timeout: "10s"
+# ping_interval: "3s"
+# reconnect_delay: "1s"
